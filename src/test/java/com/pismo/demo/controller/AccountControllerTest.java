@@ -23,13 +23,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class AccountControllerTest {
 
     @Autowired
-    private MockMvc mockMvc; // Simulates HTTP requests (Postman in code)
+    private MockMvc mockMvc;
 
     @MockBean
-    private AccountService accountService; // We mock this so we don't need a database
+    private AccountService accountService;
 
     @Autowired
-    private ObjectMapper objectMapper; // Converts Java Objects <-> JSON
+    private ObjectMapper objectMapper;
 
     @Test
     @DisplayName("Create Account - Success (201 Created)")
@@ -42,8 +42,8 @@ class AccountControllerTest {
 
         mockMvc.perform(post("/accounts")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request))) // Converts object to JSON string
-                .andExpect(status().isCreated()) // Expect 201
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.account_id").value(1))
                 .andExpect(jsonPath("$.document_number").value(docNumber));
     }

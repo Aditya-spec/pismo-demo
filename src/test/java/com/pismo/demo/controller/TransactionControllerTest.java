@@ -86,7 +86,7 @@ class TransactionControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.title").value("Bad Request")) // Matches your GlobalExceptionHandler
+                .andExpect(jsonPath("$.title").value("Bad Request"))
                 .andExpect(jsonPath("$.detail").value("Invalid Operation Type ID"));
     }
 

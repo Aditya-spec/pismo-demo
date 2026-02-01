@@ -20,6 +20,16 @@ public class AccountServiceImpl implements AccountService {
     }
     private static final Logger log = LoggerFactory.getLogger(AccountServiceImpl.class);
 
+    /**
+     * Creates a new account with the specified document number.
+     * <p>
+     * This method initializes an Account entity, persists it to the database,
+     * and logs the process. Any errors during persistence are logged and re-thrown.
+     *
+     * @param documentNumber The unique document number associated with the account.
+     * @return AccountResponseDTO containing the generated ID and document number.
+     * @throws DataIntegrityViolationException if the document number already exists.
+     */
     @Override
     @Transactional
     public AccountResponseDTO createAccount(String documentNumber) {
@@ -37,6 +47,15 @@ public class AccountServiceImpl implements AccountService {
         }
     }
 
+    /**
+     * Retrieves account details by the account ID.
+     * <p>
+     * Performs a read-only transaction to fetch account data.
+     *
+     * @param accountId The unique identifier of the account.
+     * @return AccountResponseDTO containing account details.
+     * @throws EntityNotFoundException if no account is found with the given ID.
+     */
     @Override
     @Transactional(readOnly = true)
     public AccountResponseDTO getAccount(Long accountId) {
@@ -44,7 +63,6 @@ public class AccountServiceImpl implements AccountService {
         try{
             Account account = accountRepository.findById(accountId)
                     .orElseThrow(() -> new EntityNotFoundException("Account not found with ID: " + accountId));
-
             return new AccountResponseDTO(account.getId(), account.getDocumentNumber());
         }catch (Exception e) {
             log.error("FAILED to get account. Account accountId: {} :: error {}", accountId, e.getMessage());

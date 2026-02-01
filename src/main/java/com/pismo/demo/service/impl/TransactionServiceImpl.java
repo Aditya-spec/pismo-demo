@@ -31,6 +31,21 @@ public class TransactionServiceImpl implements TransactionService {
         this.operationTypeRepository = operationTypeRepository;
     }
 
+    /**
+     * Creates a new transaction for a specific account.
+     * <p>
+     * This method performs the following steps:
+     * 1. Validates the existence of the Account.
+     * 2. Validates the existence of the Operation Type.
+     * 3. Calculates the final amount by applying the Operation Type's sign multiplier
+     * (e.g., converts positive input to negative for withdrawals).
+     * 4. Persists the transaction with a timestamp.
+     *
+     * @param request The DTO containing account ID, operation type, and amount.
+     * @return TransactionResponseDTO containing the persisted transaction details.
+     * @throws EntityNotFoundException if the account does not exist.
+     * @throws IllegalArgumentException if the operation type is invalid.
+     */
     @Override
     @Transactional
     public TransactionResponseDTO createTransaction(TransactionRequestDTO request) {

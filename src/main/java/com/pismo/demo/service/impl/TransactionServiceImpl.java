@@ -52,36 +52,41 @@ public class TransactionServiceImpl implements TransactionService {
         log.info("Initiating transaction. Account: {}, Type: {}, Amount: {}",
                 request.accountId(), request.operationTypeId(), request.amount());
 
-        Account account = accountRepository.findById(request.accountId())
-                .orElseThrow(() -> {
-                    log.error("Transaction failed: Account ID {} does not exists", request.accountId());
-                    return new EntityNotFoundException("Account not found");
-                });
+        try {
+            Account account = accountRepository.findById(request.accountId())
+                    .orElseThrow(() -> {
+                        log.error("Transaction failed: Account ID {} does not exists", request.accountId());
+                        return new EntityNotFoundException("Account not found");
+                    });
 
-        OperationType type = operationTypeRepository.findById(Long.valueOf(request.operationTypeId()))
-                .orElseThrow(() -> {
-                    log.error("Transaction failed: Invalid Operation Type ID {}", request.operationTypeId());
-                    return new IllegalArgumentException("Invalid Operation Type ID");
-                });
+            OperationType type = operationTypeRepository.findById(Long.valueOf(request.operationTypeId()))
+                    .orElseThrow(() -> {
+                        log.error("Transaction failed: Invalid Operation Type ID {}", request.operationTypeId());
+                        return new IllegalArgumentException("Invalid Operation Type ID");
+                    });
 
-        BigDecimal finalAmount = request.amount().abs().multiply(BigDecimal.valueOf(type.getSignMultiplier()));
+            BigDecimal finalAmount = request.amount().abs().multiply(BigDecimal.valueOf(type.getSignMultiplier()));
 
-        Transaction transaction = new Transaction();
-        transaction.setAccount(account);
-        transaction.setOperationTypeId(type.getId().intValue());
-        transaction.setAmount(finalAmount);
-        transaction.setEventDate(LocalDateTime.now());
+            Transaction transaction = new Transaction();
+            transaction.setAccount(account);
+            transaction.setOperationTypeId(type.getId().intValue());
+            transaction.setAmount(finalAmount);
+            transaction.setEventDate(LocalDateTime.now());
 
-        Transaction savedTransaction = transactionRepository.save(transaction);
+            Transaction savedTransaction = transactionRepository.save(transaction);
+            log.info("Transaction saved successfully with ID: {}", savedTransaction.getId());
+            return new TransactionResponseDTO(
+                    savedTransaction.getId(),
+                    savedTransaction.getAccount().getId(),
+                    savedTransaction.getOperationTypeId(),
+                    savedTransaction.getAmount(),
+                    savedTransaction.getEventDate()
+            );
 
-        log.info("Transaction saved successfully with ID: {}", savedTransaction.getId());
-
-        return new TransactionResponseDTO(
-                savedTransaction.getId(),
-                savedTransaction.getAccount().getId(),
-                savedTransaction.getOperationTypeId(),
-                savedTransaction.getAmount(),
-                savedTransaction.getEventDate()
-        );
+        } catch (Exception e) {
+            log.error("FAILED to create transaction. Account: {} :: error {}", request.accountId(), e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
     }
 }

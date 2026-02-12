@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 
@@ -28,6 +29,18 @@ public class Account {
     @UpdateTimestamp
     @Column(name = "updated_on")
     private LocalDateTime updatedOn;
+
+    @Column(name = "balance", nullable = false)
+    private BigDecimal balance = BigDecimal.valueOf(0);
+
+    public BigDecimal getBalance() {
+        return balance;
+    }
+
+    public void setBalance(BigDecimal balance) {
+        this.balance = balance;
+    }
+
 
     public Long getId() {
         return id;

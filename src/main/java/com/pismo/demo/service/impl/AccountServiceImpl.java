@@ -43,7 +43,6 @@ public class AccountServiceImpl implements AccountService {
             return new AccountResponseDTO(savedAccount.getId(), savedAccount.getDocumentNumber());
         } catch (Exception e) {
             log.error("FAILED to create account. Document Number: {} :: error {}", documentNumber, e.getMessage());
-            e.printStackTrace();
             throw e;
         }
     }
@@ -67,7 +66,6 @@ public class AccountServiceImpl implements AccountService {
             return new AccountResponseDTO(account.getId(), account.getDocumentNumber());
         }catch (Exception e) {
             log.error("FAILED to get account. Account accountId: {} :: error {}", accountId, e.getMessage());
-            e.printStackTrace();
             throw e;
         }
     }

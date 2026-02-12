@@ -81,14 +81,26 @@ public class TransactionServiceImpl implements TransactionService {
 
             BigDecimal finalAmount = request.amount().abs().multiply(BigDecimal.valueOf(type.getSignMultiplier()));
 
+            BigDecimal  currentBalance = account.getBalance();
+            if(type.getSignMultiplier() < 0){
+               BigDecimal newLimit = currentBalance.add(BigDecimal.valueOf(1000));
+                if(newLimit.compareTo(request.amount()) < 0){
+                    throw new IllegalArgumentException("Transaction denied: limit exceeded");
+                }else{
+                    account.setBalance(currentBalance.subtract(request.amount()));
+                }
+            }
+            else {
+                account.setBalance(currentBalance.add(request.amount()));
+            }
             Transaction transaction = new Transaction();
             transaction.setAccount(account);
             transaction.setOperationTypeId(type.getId().intValue());
             transaction.setAmount(finalAmount);
             transaction.setEventDate(LocalDateTime.now());
             transaction.setIdempotencyKey(idempotencyKey);
-
             Transaction savedTransaction = transactionRepository.save(transaction);
+            accountRepository.save(account);
             log.info("Transaction saved successfully with ID: {}", savedTransaction.getId());
             return new TransactionResponseDTO(
                     savedTransaction.getId(),
@@ -100,7 +112,6 @@ public class TransactionServiceImpl implements TransactionService {
 
         } catch (Exception e) {
             log.error("FAILED to create transaction. Account: {} :: error {}", request.accountId(), e.getMessage());
-            e.printStackTrace();
             throw e;
         }
     }

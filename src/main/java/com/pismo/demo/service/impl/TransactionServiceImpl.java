@@ -33,19 +33,25 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     /**
-     * Creates a new transaction for a specific account.
+     * Processes a financial transaction for a specific account with idempotency and balance checks.
      * <p>
      * This method performs the following steps:
-     * 1. Validates the existence of the Account.
-     * 2. Validates the existence of the Operation Type.
-     * 3. Calculates the final amount by applying the Operation Type's sign multiplier
-     * (e.g., converts positive input to negative for withdrawals).
-     * 4. Persists the transaction with a timestamp.
+     * 1. <b>Idempotency Check:</b> Checks if a transaction with the provided {@code idempotencyKey} already exists.
+     * If found, returns the existing transaction to prevent duplicate processing.
+     * 2. <b>Validation:</b> Verifies that the Account and Operation Type exist.
+     * 3. <b>Business Logic:</b>
+     * <ul>
+     * <li><b>Debits (Negative Multiplier):</b> Checks if the transaction amount is within the allowed limit
+     * (Current Balance + 1000.00 buffer). If valid, subtracts the amount from the balance.</li>
+     * <li><b>Credits (Positive Multiplier):</b> Adds the transaction amount to the current balance.</li>
+     * </ul>
+     * 4. <b>Persistence:</b> Saves the new transaction record and updates the account balance in the database.
      *
-     * @param request The DTO containing account ID, operation type, and amount.
+     * @param request        The DTO containing account ID, operation type, and transaction amount.
+     * @param idempotencyKey A unique key (header) provided by the client to ensure the request is processed only once.
      * @return TransactionResponseDTO containing the persisted transaction details.
-     * @throws EntityNotFoundException if the account does not exist.
-     * @throws IllegalArgumentException if the operation type is invalid.
+     * @throws EntityNotFoundException  if the account does not exist.
+     * @throws IllegalArgumentException if the operation type is invalid or if the transaction exceeds the available limit.
      */
     @Override
     @Transactional

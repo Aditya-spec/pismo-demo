@@ -26,6 +26,9 @@ public class Transaction {
     @Column(name = "event_date", nullable = false)
     private LocalDateTime eventDate;
 
+    @Column(name = "idempotency_key", unique = true, nullable = false)
+    private String idempotencyKey;
+
     public Long getId() {
         return id;
     }
@@ -64,5 +67,13 @@ public class Transaction {
 
     public void setEventDate(LocalDateTime eventDate) {
         this.eventDate = eventDate;
+    }
+
+    public String getIdempotencyKey() {
+        return idempotencyKey;
+    }
+
+    public void setIdempotencyKey(String idempotencyKey) {
+        this.idempotencyKey = idempotencyKey;
     }
 }

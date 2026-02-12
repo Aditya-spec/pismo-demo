@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 @Service
 public class TransactionServiceImpl implements TransactionService {
@@ -48,9 +49,22 @@ public class TransactionServiceImpl implements TransactionService {
      */
     @Override
     @Transactional
-    public TransactionResponseDTO createTransaction(TransactionRequestDTO request) {
-        log.info("Initiating transaction. Account: {}, Type: {}, Amount: {}",
-                request.accountId(), request.operationTypeId(), request.amount());
+    public TransactionResponseDTO createTransaction(TransactionRequestDTO request, String idempotencyKey) {
+        log.info("Initiating transaction. Account: {}, Type: {}, Amount: {}, key:{}",
+                request.accountId(), request.operationTypeId(), request.amount(), idempotencyKey);
+
+        Optional<Transaction> existingTransaction = transactionRepository.findByIdempotencyKey(idempotencyKey);
+        if (existingTransaction.isPresent()) {
+            Transaction t = existingTransaction.get();
+            log.info("Idempotency hit! Returning existing transaction ID: {}", t.getId());
+            return new TransactionResponseDTO(
+                    t.getId(),
+                    t.getAccount().getId(),
+                    t.getOperationTypeId(),
+                    t.getAmount(),
+                    t.getEventDate()
+            );
+        }
 
         try {
             Account account = accountRepository.findById(request.accountId())
@@ -72,6 +86,7 @@ public class TransactionServiceImpl implements TransactionService {
             transaction.setOperationTypeId(type.getId().intValue());
             transaction.setAmount(finalAmount);
             transaction.setEventDate(LocalDateTime.now());
+            transaction.setIdempotencyKey(idempotencyKey);
 
             Transaction savedTransaction = transactionRepository.save(transaction);
             log.info("Transaction saved successfully with ID: {}", savedTransaction.getId());

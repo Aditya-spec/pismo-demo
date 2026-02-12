@@ -26,8 +26,9 @@ public class TransactionController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Create a transaction")
-    public ResponseEntity<TransactionResponseDTO> createTransaction(@RequestBody @Valid TransactionRequestDTO request) {
-        TransactionResponseDTO responseDTO = transactionService.createTransaction(request);
+    public ResponseEntity<TransactionResponseDTO> createTransaction(@RequestHeader(value = "key") String idempotencyKey,
+                                                                    @RequestBody @Valid TransactionRequestDTO request) {
+        TransactionResponseDTO responseDTO = transactionService.createTransaction(request, idempotencyKey);
         return ResponseEntity.ok(responseDTO);
     }
 }

@@ -17,6 +17,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -37,19 +38,23 @@ class TransactionControllerTest {
     @Test
     @DisplayName("Create Transaction - Success (200 OK)")
     void createTransaction_Success() throws Exception {
+        // Arrange
         TransactionRequestDTO request = new TransactionRequestDTO(1L, 1, new BigDecimal("100.00"));
-        
+        String idempotencyKey = "unique-key-123";
+
         TransactionResponseDTO response = new TransactionResponseDTO(
-                555L, 
-                1L, 
-                1, 
-                new BigDecimal("-100.00"), 
+                555L,
+                1L,
+                1,
+                new BigDecimal("-100.00"),
                 LocalDateTime.now()
         );
 
-        when(transactionService.createTransaction(any(TransactionRequestDTO.class))).thenReturn(response);
+        when(transactionService.createTransaction(any(TransactionRequestDTO.class), eq(idempotencyKey)))
+                .thenReturn(response);
 
         mockMvc.perform(post("/transactions")
+                        .header("key", idempotencyKey)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -62,11 +67,13 @@ class TransactionControllerTest {
     @DisplayName("Create Transaction - Account Not Found -> 404 Not Found")
     void createTransaction_AccountNotFound() throws Exception {
         TransactionRequestDTO request = new TransactionRequestDTO(99L, 1, BigDecimal.TEN);
+        String key = "key-404";
 
-        when(transactionService.createTransaction(any()))
+        when(transactionService.createTransaction(any(), eq(key)))
                 .thenThrow(new EntityNotFoundException("Account not found"));
 
         mockMvc.perform(post("/transactions")
+                        .header("key", key)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isNotFound())
@@ -78,11 +85,13 @@ class TransactionControllerTest {
     @DisplayName("Create Transaction - Invalid Operation Type -> 400 Bad Request")
     void createTransaction_InvalidOperationType() throws Exception {
         TransactionRequestDTO request = new TransactionRequestDTO(1L, 99, BigDecimal.TEN);
+        String key = "key-400";
 
-        when(transactionService.createTransaction(any()))
+        when(transactionService.createTransaction(any(), eq(key)))
                 .thenThrow(new IllegalArgumentException("Invalid Operation Type ID"));
 
         mockMvc.perform(post("/transactions")
+                        .header("key", key)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
@@ -94,8 +103,9 @@ class TransactionControllerTest {
     @DisplayName("Create Transaction - Validation Error (Empty Body) -> 400 Bad Request")
     void createTransaction_ValidationFail() throws Exception {
         mockMvc.perform(post("/transactions")
+                        .header("key", "any-key")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{}")) 
+                        .content("{}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.title").value("Validation Error"));
     }

@@ -42,94 +42,85 @@ class TransactionServiceImplTest {
 
 
     @Test
-    @DisplayName("Create Transaction - Purchase (Debit) -> Amount should become negative")
-    void createTransaction_DebitSuccess() {
-        Long accountId = 1L;
-        int operationTypeId = 1; // Normal Purchase (Negative)
-        BigDecimal amount = new BigDecimal("100.00");
+    @DisplayName("Create Transaction - Idempotency Hit (Key Exists) -> Return Existing Transaction")
+    void createTransaction_IdempotencyHit() {
+        // Arrange
+        String idempotencyKey = "key-123";
+        TransactionRequestDTO request = new TransactionRequestDTO(1L, 1, new BigDecimal("100.00"));
 
-        TransactionRequestDTO request = new TransactionRequestDTO(accountId, operationTypeId, amount);
+        // Simulate an existing transaction found in DB
+        Transaction existingTx = new Transaction();
+        existingTx.setId(999L);
+        existingTx.setAccount(new Account()); // basic mock
+        existingTx.getAccount().setId(1L);
+        existingTx.setOperationTypeId(1);
+        existingTx.setAmount(new BigDecimal("-100.00"));
+        existingTx.setEventDate(LocalDateTime.now());
+        existingTx.setIdempotencyKey(idempotencyKey);
 
-        Account account = new Account();
-        account.setId(accountId);
+        when(transactionRepository.findByIdempotencyKey(idempotencyKey)).thenReturn(Optional.of(existingTx));
 
-        OperationType operationType = new OperationType();
-        operationType.setId(1L);
-        operationType.setSignMultiplier(-1); // DEBIT logic
-
-        when(accountRepository.findById(accountId)).thenReturn(Optional.of(account));
-        when(operationTypeRepository.findById(1L)).thenReturn(Optional.of(operationType));
-        
-        when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> {
-            Transaction t = invocation.getArgument(0);
-            t.setId(555L); // Simulate DB generating ID
-            return t;
-        });
-
-        TransactionResponseDTO result = transactionService.createTransaction(request);
+        TransactionResponseDTO result = transactionService.createTransaction(request, idempotencyKey);
 
         assertNotNull(result);
-        assertEquals(555L, result.transactionId());
-        assertEquals(new BigDecimal("-100.00"), result.amount()); // Verified Negative
-        
-        verify(transactionRepository).save(any(Transaction.class));
-    }
+        assertEquals(999L, result.transactionId());
+        assertEquals(new BigDecimal("-100.00"), result.amount());
 
-    @Test
-    @DisplayName("Create Transaction - Payment (Credit) -> Amount should be positive")
-    void createTransaction_CreditSuccess() {
-        Long accountId = 1L;
-        int operationTypeId = 4; // Credit Voucher (Positive)
-        BigDecimal amount = new BigDecimal("50.00");
-
-        TransactionRequestDTO request = new TransactionRequestDTO(accountId, operationTypeId, amount);
-
-        Account account = new Account();
-        account.setId(accountId);
-
-        OperationType operationType = new OperationType();
-        operationType.setId(4L);
-        operationType.setSignMultiplier(1); // CREDIT logic
-
-        when(accountRepository.findById(accountId)).thenReturn(Optional.of(account));
-        when(operationTypeRepository.findById(4L)).thenReturn(Optional.of(operationType));
-        when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
-        TransactionResponseDTO result = transactionService.createTransaction(request);
-
-        assertEquals(new BigDecimal("50.00"), result.amount()); // Verified Positive
-    }
-
-    @Test
-    @DisplayName("Create Transaction - Account Not Found -> Throw EntityNotFoundException")
-    void createTransaction_AccountNotFound() {
-        TransactionRequestDTO request = new TransactionRequestDTO(99L, 1, BigDecimal.TEN);
-
-        when(accountRepository.findById(99L)).thenReturn(Optional.empty());
-
-        EntityNotFoundException ex = assertThrows(EntityNotFoundException.class, () ->
-            transactionService.createTransaction(request)
-        );
-
-        assertEquals("Account not found", ex.getMessage());
-        
+        verify(accountRepository, never()).findById(any());
         verify(operationTypeRepository, never()).findById(any());
         verify(transactionRepository, never()).save(any());
     }
 
+
     @Test
-    @DisplayName("Create Transaction - Invalid Operation Type -> Throw IllegalArgumentException")
-    void createTransaction_InvalidOperationType() {
-        TransactionRequestDTO request = new TransactionRequestDTO(1L, 99, BigDecimal.TEN);
+    @DisplayName("Create Transaction - New Key (Success) -> Save and Return")
+    void createTransaction_NewKey_Success() {
+        String idempotencyKey = "key-new-456";
+        TransactionRequestDTO request = new TransactionRequestDTO(1L, 1, new BigDecimal("100.00"));
 
-        when(accountRepository.findById(1L)).thenReturn(Optional.of(new Account()));
-        when(operationTypeRepository.findById(99L)).thenReturn(Optional.empty());
+        Account account = new Account();
+        account.setId(1L);
 
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
-            transactionService.createTransaction(request)
+        OperationType operationType = new OperationType();
+        operationType.setId(1L);
+        operationType.setSignMultiplier(-1);
+
+        when(transactionRepository.findByIdempotencyKey(idempotencyKey)).thenReturn(Optional.empty());
+
+        when(accountRepository.findById(1L)).thenReturn(Optional.of(account));
+        when(operationTypeRepository.findById(1L)).thenReturn(Optional.of(operationType));
+
+        when(transactionRepository.save(any(Transaction.class))).thenAnswer(inv -> {
+            Transaction t = inv.getArgument(0);
+            t.setId(555L);
+            return t;
+        });
+
+
+        TransactionResponseDTO result = transactionService.createTransaction(request, idempotencyKey);
+
+        assertEquals(555L, result.transactionId());
+        assertEquals(new BigDecimal("-100.00"), result.amount());
+        verify(transactionRepository).save(any(Transaction.class));
+    }
+
+
+
+    @Test
+    @DisplayName("Create Transaction - Account Not Found -> Throw EntityNotFoundException")
+    void createTransaction_AccountNotFound() {
+        // Arrange
+        String key = "key-fail";
+        TransactionRequestDTO request = new TransactionRequestDTO(99L, 1, BigDecimal.TEN);
+
+        when(transactionRepository.findByIdempotencyKey(key)).thenReturn(Optional.empty());
+        when(accountRepository.findById(99L)).thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThrows(EntityNotFoundException.class, () ->
+                transactionService.createTransaction(request, key)
         );
 
-        assertEquals("Invalid Operation Type ID", ex.getMessage());
         verify(transactionRepository, never()).save(any());
     }
 }

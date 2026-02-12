@@ -6,5 +6,5 @@ import com.pismo.demo.dto.TransactionResponseDTO;
 import com.pismo.demo.entity.Transaction;
 
 public interface TransactionService {
-    TransactionResponseDTO createTransaction(TransactionRequestDTO request);
+    TransactionResponseDTO createTransaction(TransactionRequestDTO request, String idempotencyKey);
 }

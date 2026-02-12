@@ -36,7 +36,7 @@ mvnw spring-boot:run
 Open CLI & Run these commands
 
 * ./mvnw clean package -DskipTests
-* docker build -t pismo-demo .
+* docker build -t pismo-demo 
 * docker run -p 8080:8080 pismo-demo
 
 ---
